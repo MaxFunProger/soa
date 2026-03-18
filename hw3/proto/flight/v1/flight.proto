@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package flight.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Flight lifecycle (business).
+enum FlightStatus {
+  FLIGHT_STATUS_UNSPECIFIED = 0;
+  FLIGHT_STATUS_SCHEDULED = 1;
+  FLIGHT_STATUS_DEPARTED = 2;
+  FLIGHT_STATUS_CANCELLED = 3;
+  FLIGHT_STATUS_COMPLETED = 4;
+}
+
+enum SeatReservationStatus {
+  SEAT_RESERVATION_STATUS_UNSPECIFIED = 0;
+  SEAT_RESERVATION_STATUS_ACTIVE = 1;
+  SEAT_RESERVATION_STATUS_RELEASED = 2;
+  SEAT_RESERVATION_STATUS_EXPIRED = 3;
+}
+
+// NOT_FOUND — рейс / резервация не найдены
+// INVALID_ARGUMENT — неверные параметры (seat_count < 1 и т.д.)
+// RESOURCE_EXHAUSTED — недостаточно мест
+// FAILED_PRECONDITION — операция недопустима в текущем состоянии (рейс не SCHEDULED и т.д.)
+// UNAUTHENTICATED — нет или неверный API key в metadata
+// ALREADY_EXISTS — (опционально) дубликат booking_id при создании резервации без идемпотентности
+
+message Flight {
+  string id = 1;
+  string flight_number = 2;
+  google.protobuf.Timestamp departure_date = 3;
+  string airline_code = 4;
+  string airline_name = 5;
+  string origin_iata = 6;
+  string destination_iata = 7;
+  google.protobuf.Timestamp scheduled_departure = 8;
+  google.protobuf.Timestamp scheduled_arrival = 9;
+  int32 total_seats = 10;
+  int32 available_seats = 11;
+  string price_amount = 12; // decimal string, e.g. "199.99"
+  string currency = 13;
+  FlightStatus status = 14;
+}
+
+message SearchFlightsRequest {
+  string origin_iata = 1;
+  string destination_iata = 2;
+  google.protobuf.Timestamp departure_date = 3;
+}
+
+message SearchFlightsResponse {
+  repeated Flight flights = 1;
+}
+
+message GetFlightRequest {
+  string flight_id = 1;
+}
+
+message GetFlightResponse {
+  Flight flight = 1;
+}
+
+message ReserveSeatsRequest {
+  string flight_id = 1;
+  int32 seat_count = 2;
+  string booking_id = 3; // UUID from Booking Service — идемпотентность по повторным вызовам
+}
+
+message ReserveSeatsResponse {
+  string reservation_id = 1;
+  int32 reserved_seats = 2;
+}
+
+message ReleaseReservationRequest {
+  string booking_id = 1;
+}
+
+message ReleaseReservationResponse {
+  int32 released_seats = 1;
+}
+
+// Опциональное обновление рейса (инвалидация кеша при успехе)
+message UpdateFlightRequest {
+  string flight_id = 1;
+  optional FlightStatus status = 2;
+  optional int32 total_seats = 3;
+}
+
+message UpdateFlightResponse {
+  Flight flight = 1;
+}
+
+service FlightService {
+  rpc SearchFlights(SearchFlightsRequest) returns (SearchFlightsResponse);
+  rpc GetFlight(GetFlightRequest) returns (GetFlightResponse);
+  rpc ReserveSeats(ReserveSeatsRequest) returns (ReserveSeatsResponse);
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (ReleaseReservationResponse);
+  rpc UpdateFlight(UpdateFlightRequest) returns (UpdateFlightResponse);
+}
