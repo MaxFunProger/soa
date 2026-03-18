@@ -1,0 +1,112 @@
+services:
+  postgres-booking:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: booking
+    ports:
+      - "15434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d booking"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  postgres-flight:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: flight
+      POSTGRES_PASSWORD: flight
+      POSTGRES_DB: flight
+    ports:
+      - "15435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flight -d flight"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  redis-master:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  redis-replica:
+    image: redis:7-alpine
+    command: redis-server --replicaof redis-master 6379
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  redis-sentinel:
+    image: redis:7-alpine
+    volumes:
+      - ./config/sentinel.conf:/etc/redis/sentinel.conf.template:ro
+      - ./config/sentinel-entrypoint.sh:/sentinel-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/sentinel-entrypoint.sh"]
+    depends_on:
+      redis-master:
+        condition: service_healthy
+      redis-replica:
+        condition: service_healthy
+    ports:
+      - "26379:26379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  flight-service:
+    build:
+      context: .
+      dockerfile: flight_service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://flight:flight@postgres-flight:5432/flight
+      GRPC_PORT: "50051"
+      FLIGHT_GRPC_API_KEY: ${FLIGHT_GRPC_API_KEY:-dev-flight-api-key}
+      REDIS_SENTINEL_HOSTS: redis-sentinel:26379
+      REDIS_MASTER_NAME: mymaster
+      REDIS_CACHE_TTL_SEC: "300"
+      LOG_LEVEL: INFO
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres-flight:
+        condition: service_healthy
+      redis-sentinel:
+        condition: service_started
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: booking_service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://booking:booking@postgres-booking:5432/booking
+      FLIGHT_GRPC_TARGET: flight-service:50051
+      FLIGHT_GRPC_API_KEY: ${FLIGHT_GRPC_API_KEY:-dev-flight-api-key}
+      GRPC_DEADLINE_SEC: "10"
+      CB_FAILURE_THRESHOLD: "5"
+      CB_OPEN_DURATION_SEC: "20"
+      CB_WINDOW_SEC: "60"
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-booking:
+        condition: service_healthy
+      flight-service:
+        condition: service_started
