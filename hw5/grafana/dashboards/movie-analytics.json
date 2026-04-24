@@ -92,23 +92,55 @@
     {
       "id": 4,
       "title": "Top Movies (Today)",
-      "type": "bargauge",
+      "type": "table",
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 18 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
       "fieldConfig": {
-        "defaults": { "unit": "short", "decimals": 0 }
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": { "align": "auto", "displayMode": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "views" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "gradient-gauge" },
+              { "id": "custom.align", "value": "center" },
+              { "id": "min", "value": 0 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "blue", "value": null },
+                    { "color": "green", "value": 1 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "rank" },
+            "properties": [
+              { "id": "custom.width", "value": 60 },
+              { "id": "custom.align", "value": "center" }
+            ]
+          }
+        ]
       },
       "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "sortBy": [{ "displayName": "rank", "desc": false }]
       },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
           "editorType": "sql",
-          "rawSql": "SELECT movie_id, argMax(views, computed_at) AS views\nFROM cinema.agg_top_movies\nWHERE metric_date = (SELECT max(metric_date) FROM cinema.agg_top_movies)\nGROUP BY movie_id\nORDER BY views DESC\nLIMIT 10",
+          "rawSql": "WITH latest AS (\n    SELECT metric_date, max(computed_at) AS t\n    FROM cinema.agg_top_movies\n    WHERE metric_date = (SELECT max(metric_date) FROM cinema.agg_top_movies)\n    GROUP BY metric_date\n)\nSELECT t.rank, t.movie_id, t.views\nFROM cinema.agg_top_movies t\nINNER JOIN latest l\n    ON t.metric_date = l.metric_date AND t.computed_at = l.t\nORDER BY t.rank ASC\nLIMIT 10",
           "format": 1,
           "queryType": "table"
         }

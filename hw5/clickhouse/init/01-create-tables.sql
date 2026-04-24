@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS cinema.agg_top_movies
     computed_at DateTime DEFAULT now()
 )
 ENGINE = ReplacingMergeTree(computed_at)
-ORDER BY (metric_date, rank, movie_id);
+ORDER BY (metric_date, movie_id);
 
 CREATE TABLE IF NOT EXISTS cinema.agg_conversion
 (

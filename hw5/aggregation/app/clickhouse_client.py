@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import clickhouse_connect
@@ -156,11 +156,15 @@ class ClickHouseClient:
     def write_agg_top_movies(self, metric_date: date, rows: list[tuple[str, int, int]]) -> None:
         if not rows:
             return
-        payload = [(metric_date, movie_id, views, rank) for movie_id, views, rank in rows]
+        computed_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        payload = [
+            (metric_date, movie_id, views, rank, computed_at)
+            for movie_id, views, rank in rows
+        ]
         self._client.insert(
             "cinema.agg_top_movies",
             payload,
-            column_names=["metric_date", "movie_id", "views", "rank"],
+            column_names=["metric_date", "movie_id", "views", "rank", "computed_at"],
         )
 
     def write_agg_conversion(self, metric_date: date, started: int, finished: int, conversion: float) -> None:
