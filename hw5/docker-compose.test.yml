@@ -1,0 +1,14 @@
+services:
+  tests:
+    build:
+      context: ./tests
+    container_name: hw5-tests
+    depends_on:
+      producer:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment:
+      PRODUCER_URL: "http://producer:8000"
+      CLICKHOUSE_HOST: "clickhouse"
+      CLICKHOUSE_PORT: "8123"
