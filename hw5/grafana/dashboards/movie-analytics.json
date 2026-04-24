@@ -1,0 +1,147 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Retention Cohort Heatmap (Day 0 — Day 7)",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "center", "displayMode": "color-background" },
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.1 },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "green", "value": 0.5 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "cohort_date" },
+            "properties": [
+              { "id": "unit", "value": "string" },
+              { "id": "custom.displayMode", "value": "auto" }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "editorType": "sql",
+          "rawSql": "SELECT toString(cohort_date) AS cohort_date,\n       sumIf(retention, day_offset = 0) AS \"Day 0\",\n       sumIf(retention, day_offset = 1) AS \"Day 1\",\n       sumIf(retention, day_offset = 2) AS \"Day 2\",\n       sumIf(retention, day_offset = 3) AS \"Day 3\",\n       sumIf(retention, day_offset = 4) AS \"Day 4\",\n       sumIf(retention, day_offset = 5) AS \"Day 5\",\n       sumIf(retention, day_offset = 6) AS \"Day 6\",\n       sumIf(retention, day_offset = 7) AS \"Day 7\"\nFROM (\n    SELECT cohort_date, day_offset, argMax(retention, computed_at) AS retention\n    FROM cinema.agg_retention\n    GROUP BY cohort_date, day_offset\n)\nGROUP BY cohort_date\nORDER BY cohort_date DESC\nLIMIT 30",
+          "format": 1,
+          "queryType": "table"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "DAU",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0 }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "editorType": "sql",
+          "rawSql": "SELECT metric_date AS time, argMax(dau, computed_at) AS DAU\nFROM cinema.agg_dau\nGROUP BY metric_date\nORDER BY metric_date",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "View Conversion (VIEW_FINISHED / VIEW_STARTED)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "editorType": "sql",
+          "rawSql": "SELECT metric_date AS time, argMax(conversion, computed_at) AS conversion\nFROM cinema.agg_conversion\nGROUP BY metric_date\nORDER BY metric_date",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Top Movies (Today)",
+      "type": "bargauge",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0 }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "editorType": "sql",
+          "rawSql": "SELECT movie_id, argMax(views, computed_at) AS views\nFROM cinema.agg_top_movies\nWHERE metric_date = (SELECT max(metric_date) FROM cinema.agg_top_movies)\nGROUP BY movie_id\nORDER BY views DESC\nLIMIT 10",
+          "format": 1,
+          "queryType": "table"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Avg View Time (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+          "editorType": "sql",
+          "rawSql": "SELECT metric_date AS time, argMax(avg_seconds, computed_at) AS avg_seconds\nFROM cinema.agg_avg_view_time\nGROUP BY metric_date\nORDER BY metric_date",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["cinema", "analytics"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Movie Analytics",
+  "uid": "movie-analytics",
+  "version": 1,
+  "weekStart": ""
+}
