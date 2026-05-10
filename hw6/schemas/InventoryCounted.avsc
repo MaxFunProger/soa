@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "InventoryCounted",
+  "namespace": "wms",
+  "doc": "Пересчёт остатков (инвентаризация). Устанавливает available_quantity в counted_quantity.",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "product_id", "type": "string"},
+    {"name": "zone_id", "type": "string"},
+    {"name": "counted_quantity", "type": "long"}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "ProductReceived",
+  "namespace": "wms",
+  "doc": "Приёмка товара на склад (v1)",
+  "fields": [
+    {"name": "event_id", "type": "string", "doc": "UUID v4"},
+    {"name": "timestamp", "type": "long", "doc": "Unix epoch millis (UTC)"},
+    {"name": "product_id", "type": "string"},
+    {"name": "zone_id", "type": "string"},
+    {"name": "quantity", "type": "long"}
+  ]
+}

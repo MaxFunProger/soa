@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "ProductReleased",
+  "namespace": "wms",
+  "doc": "Снятие резерва с товара",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "product_id", "type": "string"},
+    {"name": "zone_id", "type": "string"},
+    {"name": "quantity", "type": "long"},
+    {"name": "order_id", "type": ["null", "string"], "default": null}
+  ]
+}

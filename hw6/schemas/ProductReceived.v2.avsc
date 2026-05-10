@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "ProductReceived",
+  "namespace": "wms",
+  "doc": "Приёмка товара на склад (v2). Backward-compatible: добавлено поле supplier_id с default=null.",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "product_id", "type": "string"},
+    {"name": "zone_id", "type": "string"},
+    {"name": "quantity", "type": "long"},
+    {"name": "supplier_id", "type": ["null", "string"], "default": null}
+  ]
+}

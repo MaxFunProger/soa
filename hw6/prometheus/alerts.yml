@@ -1,0 +1,38 @@
+groups:
+  - name: warehouse-consumer
+    rules:
+      - alert: ConsumerLagHigh
+        expr: max(consumer_lag) > 100
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer lag is high"
+          description: "Maximum consumer lag across partitions exceeds 100 events for over 30s."
+
+      - alert: ConsumerLagCritical
+        expr: max(consumer_lag) > 1000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Consumer lag is critical"
+          description: "Maximum consumer lag exceeds 1000 events for over 1 minute."
+
+      - alert: CassandraDown
+        expr: cassandra_connection_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cassandra connection lost"
+          description: "Consumer reports cassandra_connection_up == 0."
+
+      - alert: KafkaDown
+        expr: kafka_connection_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka connection lost"
+          description: "Consumer reports kafka_connection_up == 0."

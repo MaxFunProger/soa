@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "ProductShipped",
+  "namespace": "wms",
+  "doc": "Отгрузка товара со склада",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "product_id", "type": "string"},
+    {"name": "zone_id", "type": "string"},
+    {"name": "quantity", "type": "long"}
+  ]
+}
