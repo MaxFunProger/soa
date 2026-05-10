@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "ProductMoved",
+  "namespace": "wms",
+  "doc": "Перемещение товара между зонами",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "product_id", "type": "string"},
+    {"name": "from_zone_id", "type": "string"},
+    {"name": "to_zone_id", "type": "string"},
+    {"name": "quantity", "type": "long"}
+  ]
+}

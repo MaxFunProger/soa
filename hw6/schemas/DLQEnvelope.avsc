@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "DLQEnvelope",
+  "namespace": "wms",
+  "doc": "Структура события в Dead Letter Queue",
+  "fields": [
+    {"name": "original_event", "type": "string", "doc": "JSON исходного события"},
+    {"name": "original_record_name", "type": ["null", "string"], "default": null},
+    {"name": "original_topic", "type": "string"},
+    {"name": "error_reason", "type": "string"},
+    {"name": "error_code", "type": "string"},
+    {"name": "failed_at", "type": "long", "doc": "Unix epoch millis"},
+    {"name": "kafka_partition", "type": "int"},
+    {"name": "kafka_offset", "type": "long"}
+  ]
+}

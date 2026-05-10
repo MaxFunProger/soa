@@ -1,0 +1,26 @@
+{
+  "type": "record",
+  "name": "OrderCreated",
+  "namespace": "wms",
+  "doc": "Создание заказа на отгрузку. Список позиций, каждая резервирует товар в указанной зоне.",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "order_id", "type": "string"},
+    {
+      "name": "items",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "OrderItem",
+          "fields": [
+            {"name": "product_id", "type": "string"},
+            {"name": "zone_id", "type": "string"},
+            {"name": "quantity", "type": "long"}
+          ]
+        }
+      }
+    }
+  ]
+}

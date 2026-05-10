@@ -1,0 +1,15 @@
+services:
+  tests:
+    build:
+      context: ./tests
+    container_name: warehouse-tests
+    depends_on:
+      consumer:
+        condition: service_healthy
+    environment:
+      PRODUCER_URL: "http://producer:8000"
+      CONSUMER_URL: "http://consumer:9100"
+      CASSANDRA_CONTACT_POINTS: "cassandra-1,cassandra-2,cassandra-3"
+      CASSANDRA_KEYSPACE: "warehouse"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:29092,kafka-2:29092"
+      DLQ_TOPIC_NAME: "warehouse-events-dlq"
