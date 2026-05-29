@@ -1,0 +1,67 @@
+groups:
+  - name: service-health
+    interval: 15s
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"producer|aggregation"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: cinema
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus failed to scrape {{ $labels.instance }} for the last minute."
+
+      - alert: HighHTTPErrorRate
+        expr: |
+          sum by (service) (rate(http_request_errors_total[5m]))
+            /
+          clamp_min(sum by (service) (rate(http_requests_total[5m])), 1e-9)
+            > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: cinema
+        annotations:
+          summary: "Error rate >5% for {{ $labels.service }}"
+          description: "Error rate over the last 5 minutes exceeds 5% on {{ $labels.service }}."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (service, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: cinema
+        annotations:
+          summary: "p95 latency > 1s for {{ $labels.service }}"
+          description: "95th percentile request latency on {{ $labels.service }} is above 1 second."
+
+  - name: kafka
+    interval: 30s
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: sum by (consumergroup) (kafka_consumergroup_lag) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: cinema
+        annotations:
+          summary: "Consumer lag > 1000 for {{ $labels.consumergroup }}"
+          description: "ClickHouse Kafka engine (or another consumer) is falling behind."
+
+  - name: aggregation
+    interval: 30s
+    rules:
+      - alert: AggregationStalled
+        expr: time() - aggregation_last_success_timestamp_seconds > 600
+        for: 2m
+        labels:
+          severity: warning
+          team: cinema
+        annotations:
+          summary: "Aggregation has not succeeded in 10+ minutes"
+          description: "No successful aggregation cycle was recorded recently."

@@ -1,0 +1,14 @@
+services:
+  k6:
+    image: grafana/k6:0.51.0
+    container_name: hw7-k6
+    depends_on:
+      producer:
+        condition: service_healthy
+    environment:
+      PRODUCER_URL: "http://producer:8000"
+    volumes:
+      - ./load:/scripts:ro
+      - ./load/results:/results
+    working_dir: /scripts
+    entrypoint: ["k6", "run", "--summary-export=/results/summary.json", "/scripts/script.js"]
