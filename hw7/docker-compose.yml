@@ -109,8 +109,8 @@ services:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
       interval: 10s
       timeout: 5s
-      retries: 15
-      start_period: 10s
+      retries: 30
+      start_period: 60s
 
   postgres:
     image: postgres:16
@@ -225,8 +225,8 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 30
+      start_period: 90s
 
   # ------------------- Observability -------------------
   prometheus:

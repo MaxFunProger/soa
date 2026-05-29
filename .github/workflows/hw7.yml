@@ -59,14 +59,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bring up the stack
-        run: docker compose up -d --build --wait --wait-timeout 300
+        run: docker compose up -d --build --wait --wait-timeout 600
       - name: Run integration + E2E tests
         run: |
           docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm tests \
             pytest -v --tb=short test_integration.py test_e2e.py
-      - name: Dump compose logs on failure
+      - name: Dump compose state on failure
         if: failure()
-        run: docker compose logs --tail=200
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=400
       - name: Tear down
         if: always()
         run: docker compose down -v
@@ -82,7 +84,7 @@ jobs:
           python-version: "3.11"
 
       - name: Bring up the stack
-        run: docker compose up -d --build --wait --wait-timeout 300
+        run: docker compose up -d --build --wait --wait-timeout 600
 
       - name: Warm up (generator produces baseline traffic)
         run: sleep 30
@@ -103,9 +105,11 @@ jobs:
           name: hw7-load-and-sli
           path: |
             hw7/load/results/
-      - name: Dump compose logs on failure
+      - name: Dump compose state on failure
         if: failure()
-        run: docker compose logs --tail=300
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=400
       - name: Tear down
         if: always()
         run: docker compose down -v
