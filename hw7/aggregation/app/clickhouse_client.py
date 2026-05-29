@@ -16,12 +16,20 @@ log = logging.getLogger(__name__)
 class ClickHouseClient:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client = clickhouse_connect.get_client(
-            host=settings.clickhouse_host,
-            port=settings.clickhouse_port,
-            username=settings.clickhouse_user,
-            password=settings.clickhouse_password,
-            database=settings.clickhouse_db,
+        self._client = self._connect()
+
+    @retry(stop=stop_after_attempt(20), wait=wait_exponential(multiplier=1, min=1, max=10))
+    def _connect(self):
+        # /ping отвечает 200 раньше, чем 8123 готов принимать SQL,
+        # поэтому коннект делаем с ретраями.
+        s = self._settings
+        log.info("connecting to ClickHouse %s:%s ...", s.clickhouse_host, s.clickhouse_port)
+        return clickhouse_connect.get_client(
+            host=s.clickhouse_host,
+            port=s.clickhouse_port,
+            username=s.clickhouse_user,
+            password=s.clickhouse_password,
+            database=s.clickhouse_db,
             connect_timeout=10,
             send_receive_timeout=30,
         )
