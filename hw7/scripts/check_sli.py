@@ -48,8 +48,12 @@ SLIS: list[SLI] = [
     ),
     SLI(
         name="api_availability",
-        # 1 - error_rate; SLO 99.5%, fail < 95%
-        query='1 - (sum(rate(http_request_errors_total{service="producer"}[5m])) '
+        # 1 - error_rate; SLO 99.5%, fail < 95%.
+        # `or vector(0)` covers the common case when no errors were observed
+        # over the window at all — Prometheus would otherwise return an empty
+        # series for the numerator and the whole expression would evaluate to
+        # "no data" instead of 1.0 (100% availability).
+        query='1 - ((sum(rate(http_request_errors_total{service="producer"}[5m])) or vector(0)) '
               '/ clamp_min(sum(rate(http_requests_total{service="producer"}[5m])), 1e-9))',
         slo=0.995,
         fail_at=0.95,
@@ -97,8 +101,15 @@ def evaluate(base_url: str) -> tuple[list[dict], bool]:
 
         if value != value:  # NaN, no data yet
             report.append({
-                "name": sli.name, "value": None, "slo": sli.slo, "fail_at": sli.fail_at,
-                "ok": False, "reason": "no data",
+                "name": sli.name,
+                "description": sli.description,
+                "value": None,
+                "slo": sli.slo,
+                "fail_at": sli.fail_at,
+                "unit": sli.unit,
+                "meets_slo": False,
+                "ok": False,
+                "reason": "no data",
             })
             ok_all = False
             continue
@@ -143,8 +154,13 @@ def main() -> int:
             print(f"  {r['name']:<{width}}  ERROR: {r['error']}")
             continue
         status = "OK" if r["ok"] else "FAIL"
+        if r.get("reason") == "no data":
+            print(f"  {r['name']:<{width}}  value=<no data>  slo={r['slo']} "
+                  f"fail_at={r['fail_at']}  [{status}]")
+            continue
         slo_mark = "(ok)" if r.get("meets_slo") else "(over)"
-        print(f"  {r['name']:<{width}}  value={r['value']} {r['unit']:<6} "
+        unit = r.get("unit", "")
+        print(f"  {r['name']:<{width}}  value={r['value']} {unit:<6} "
               f"slo={r['slo']} {slo_mark} fail_at={r['fail_at']}  [{status}]")
     print(f"\noverall: {'OK' if ok else 'FAIL'}")
     return 0 if ok else 1
