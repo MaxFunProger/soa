@@ -1,0 +1,115 @@
+name: hw7 CI
+
+on:
+  push:
+    branches: ["hw-7", "main"]
+    paths:
+      - "hw7/**"
+      - ".github/workflows/hw7.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "hw7/**"
+      - ".github/workflows/hw7.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: hw7
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: producer - install + test
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r producer/requirements.txt pytest==8.2.2 pytest-cov==5.0.0 httpx==0.27.0
+          cd producer && PYTHONPATH=. pytest tests -v --tb=short
+
+      - name: aggregation - install + test
+        run: |
+          pip install -r aggregation/requirements.txt pytest==8.2.2 pytest-cov==5.0.0
+          cd aggregation && PYTHONPATH=. pytest tests -v --tb=short
+
+  build:
+    name: Docker build
+    runs-on: ubuntu-22.04
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build producer image
+        run: docker build -t hw7-producer:ci ./producer
+      - name: Build aggregation image
+        run: docker build -t hw7-aggregation:ci ./aggregation
+      - name: Build tests image
+        run: docker build -t hw7-tests:ci ./tests
+
+  integration:
+    name: Integration + E2E
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bring up the stack
+        run: docker compose up -d --build --wait --wait-timeout 600
+      - name: Run integration + E2E tests
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm tests \
+            pytest -v --tb=short test_integration.py test_e2e.py
+      - name: Dump compose state on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=400
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  load_and_sli:
+    name: Load test + SLI check
+    runs-on: ubuntu-22.04
+    needs: integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bring up the stack
+        run: docker compose up -d --build --wait --wait-timeout 600
+
+      - name: Warm up (generator produces baseline traffic)
+        run: sleep 30
+
+      - name: Run k6 load test
+        run: |
+          mkdir -p load/results
+          docker compose -f docker-compose.yml -f docker-compose.load.yml run --rm k6
+
+      - name: Verify SLI thresholds via Prometheus
+        run: |
+          python scripts/check_sli.py --prometheus http://localhost:9090 --wait 20 --out load/results/sli-report.json
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hw7-load-and-sli
+          path: |
+            hw7/load/results/
+      - name: Dump compose state on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail=400
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
