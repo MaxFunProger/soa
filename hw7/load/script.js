@@ -80,15 +80,16 @@ export function handleSummary(data) {
 }
 
 function textSummary(data) {
-  const m = data.metrics;
-  const p95 = m.http_req_duration?.values?.["p(95)"]?.toFixed(2);
-  const errorRate = (m.http_req_failed?.values?.rate * 100).toFixed(3);
-  const okRate = (m.publish_ok_ratio?.values?.rate * 100).toFixed(2);
-  return `
-=== Load summary ===
-  p95 latency:      ${p95} ms
-  http error rate:  ${errorRate} %
-  publish_ok_ratio: ${okRate} %
-=====================
-`;
+  var m = data.metrics || {};
+  var dur = (m.http_req_duration && m.http_req_duration.values) || {};
+  var failed = (m.http_req_failed && m.http_req_failed.values) || {};
+  var okM = (m.publish_ok_ratio && m.publish_ok_ratio.values) || {};
+  var p95 = typeof dur["p(95)"] === "number" ? dur["p(95)"].toFixed(2) : "n/a";
+  var errorRate = typeof failed.rate === "number" ? (failed.rate * 100).toFixed(3) : "n/a";
+  var okRate = typeof okM.rate === "number" ? (okM.rate * 100).toFixed(2) : "n/a";
+  return "\n=== Load summary ===\n" +
+    "  p95 latency:      " + p95 + " ms\n" +
+    "  http error rate:  " + errorRate + " %\n" +
+    "  publish_ok_ratio: " + okRate + " %\n" +
+    "=====================\n";
 }
