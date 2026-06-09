@@ -105,12 +105,16 @@ services:
         condition: service_healthy
       kafka-2:
         condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
-      interval: 10s
+      # /ping отвечает раньше, чем 8123 готов принимать SQL,
+      # поэтому healthcheck реально гоняет запрос.
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8123/?query=SELECT%201' | grep -q '^1$$'"]
+      interval: 5s
       timeout: 5s
-      retries: 30
-      start_period: 60s
+      retries: 40
+      start_period: 30s
 
   postgres:
     image: postgres:16
@@ -159,6 +163,26 @@ services:
       (mc mb local/movie-analytics || true) &&
       mc anonymous set download local/movie-analytics &&
       echo 'MinIO bucket ready'
+      "
+
+  # Создаёт Kafka engine + MaterializedView в ClickHouse после того,
+  # как producer уже зарегистрировал Avro-схему и создал topic.
+  # Сам по себе не запускается ClickHouse'ом при init — иначе CH будет
+  # висеть на UNKNOWN_TOPIC и не откроет порт 8123.
+  clickhouse-kafka-init:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: clickhouse-kafka-init
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      producer:
+        condition: service_healthy
+    volumes:
+      - ./clickhouse/post-init:/sql:ro
+    entrypoint: >
+      /bin/bash -c "
+      clickhouse-client --host clickhouse --port 9000 --multiquery < /sql/kafka_engine.sql &&
+      echo 'Kafka engine + MV ready'
       "
 
   producer:
@@ -219,16 +243,18 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
+      clickhouse-kafka-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 30
-      start_period: 90s
+      retries: 20
+      start_period: 30s
 
   # ------------------- Observability -------------------
   prometheus:
