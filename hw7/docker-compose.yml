@@ -179,8 +179,17 @@ services:
         condition: service_healthy
     volumes:
       - ./clickhouse/post-init:/sql:ro
+    # HTTP 8123 healthcheck говорит "healthy", но native TCP 9000
+    # поднимается чуть позже, поэтому ждём его явно.
     entrypoint: >
       /bin/bash -c "
+      for i in $$(seq 1 30); do
+        if clickhouse-client --host clickhouse --port 9000 --query 'SELECT 1' >/dev/null 2>&1; then
+          break;
+        fi;
+        echo 'waiting for clickhouse:9000 ...';
+        sleep 2;
+      done &&
       clickhouse-client --host clickhouse --port 9000 --multiquery < /sql/kafka_engine.sql &&
       echo 'Kafka engine + MV ready'
       "
