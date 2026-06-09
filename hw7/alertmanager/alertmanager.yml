@@ -2,17 +2,17 @@ global:
   resolve_timeout: 1m
 
 route:
-  receiver: log-sink
+  receiver: null-receiver
   group_by: ["alertname", "service"]
   group_wait: 10s
   group_interval: 30s
   repeat_interval: 5m
 
+# Реальная интеграция (Slack/PagerDuty/email) условием задания не требуется.
+# Достаточно показать, что alert уезжает в Alertmanager и виден в его UI;
+# поэтому receiver — заглушка без webhook'ов.
 receivers:
-  - name: log-sink
-    webhook_configs:
-      - url: "http://prometheus:9090/-/healthy"
-        send_resolved: true
+  - name: null-receiver
 
 inhibit_rules:
   - source_matchers:

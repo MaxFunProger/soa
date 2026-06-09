@@ -166,6 +166,7 @@ services:
       context: ./producer
     hostname: producer
     container_name: producer
+    restart: on-failure
     ports:
       - "8000:8000"
     environment:
@@ -195,6 +196,7 @@ services:
       context: ./aggregation
     hostname: aggregation
     container_name: aggregation
+    restart: on-failure
     ports:
       - "8010:8010"
     environment:

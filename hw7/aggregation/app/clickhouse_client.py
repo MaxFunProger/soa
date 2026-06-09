@@ -18,10 +18,11 @@ class ClickHouseClient:
         self._settings = settings
         self._client = self._connect()
 
-    @retry(stop=stop_after_attempt(20), wait=wait_exponential(multiplier=1, min=1, max=10))
+    @retry(stop=stop_after_attempt(60), wait=wait_exponential(multiplier=1, min=1, max=10))
     def _connect(self):
-        # /ping отвечает 200 раньше, чем 8123 готов принимать SQL,
-        # поэтому коннект делаем с ретраями.
+        # /ping отвечает 200 раньше, чем 8123 готов принимать SQL
+        # (Kafka engine + materialized view долго инициализируются), поэтому
+        # коннект делаем с ретраями: до ~10 минут совокупно.
         s = self._settings
         log.info("connecting to ClickHouse %s:%s ...", s.clickhouse_host, s.clickhouse_port)
         return clickhouse_connect.get_client(

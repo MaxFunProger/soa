@@ -11,4 +11,4 @@ services:
       - ./load:/scripts:ro
       - ./load/results:/results
     working_dir: /scripts
-    entrypoint: ["k6", "run", "--summary-export=/results/summary.json", "/scripts/script.js"]
+    entrypoint: ["k6", "run", "/scripts/script.js"]

@@ -72,8 +72,9 @@ export default function () {
 }
 
 export function handleSummary(data) {
+  // путь должен совпадать с volume mount /results в docker-compose.load.yml
   return {
-    "summary.json": JSON.stringify(data, null, 2),
+    "/results/summary.json": JSON.stringify(data, null, 2),
     stdout: textSummary(data),
   };
 }
