@@ -1,4 +1,6 @@
 <clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+
     <prometheus>
         <endpoint>/metrics</endpoint>
         <port>9363</port>
